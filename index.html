@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomodoro 28 Minutos - Productividad</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Estilos personalizados para animaciones y transiciones de gradiente */
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .phase-prep {
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      border-color: #f97316;
+    }
+
+    .phase-focus {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-color: #2563eb;
+    }
+
+    .phase-close {
+      background: linear-gradient(135deg, #fefce8 0%, #fef08a 100%);
+      border-color: #eab308;
+    }
+
+    /* Animación de destello visual al cambiar de fase */
+    @keyframes flashAlert {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.02); }
+    }
+
+    .flash-phase {
+      animation: flashAlert 0.6s ease-in-out 3;
+    }
+
+    /* Ocultar barra de scroll en contenedores específicos manteniendo funcionalidad */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+
+  <!-- Header principal -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">
+          28
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-none text-slate-900">Pomodoro 28m</h1>
+          <p class="text-xs text-slate-500 font-medium">1.5m Prep + 25m Enfoque + 1.5m Cierre</p>
+        </div>
+      </div>
+
+      <!-- Pestañas de navegación -->
+      <nav class="flex bg-slate-100 p-1 rounded-xl gap-1">
+        <button id="tab-timer-btn" onclick="switchTab('timer')" 
+                class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-sm bg-white text-blue-600">
+          <i data-lucide="timer" class="w-4 h-4"></i>
+          <span>Temporizador</span>
+        </button>
+        <button id="tab-stats-btn" onclick="switchTab('stats')" 
+                class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all text-slate-600 hover:text-slate-900">
+          <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+          <span>Estadísticas</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Contenido principal -->
+  <main class="max-w-5xl mx-auto px-4 py-8 flex-1 w-full">
+    
+    <!-- Toast de Notificaciones -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+      <div class="bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700">
+        <i id="toast-icon" data-lucide="bell" class="w-5 h-5 text-blue-400"></i>
+        <span id="toast-message" class="text-sm font-medium">Mensaje de notificación</span>
+      </div>
+    </div>
+
+    <!-- VISTA 1: TEMPORIZADOR -->
+    <section id="view-timer" class="space-y-6 max-w-2xl mx-auto">
+      
+      <!-- Card del formulario de objetivo -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <i data-lucide="target" class="w-5 h-5 text-blue-600"></i>
+          Definición de la Sesión
+        </h2>
+        
+        <div class="space-y-4">
+          <div>
+            <label for="input-proyecto" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Nombre del Proyecto <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" id="input-proyecto" placeholder="Ej. Rediseño Web / Tesis / Estudio" 
+                   class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400">
+          </div>
+          
+          <div>
+            <label for="input-objetivo" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Objetivo Específico de estos 28m <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" id="input-objetivo" placeholder="Ej. Escribir las 3 conclusiones principales" 
+                   class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm font-medium text-slate-800 placeholder:text-slate-400">
+          </div>
+        </div>
+      </div>
+
+      <!-- Card principal del reloj pomodoro -->
+      <div id="timer-card" class="phase-prep border-2 p-8 rounded-3xl text-center shadow-sm transition-all duration-500 relative overflow-hidden">
+        
+        <!-- Indicador visual de la fase actual -->
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-sm shadow-sm text-sm font-bold mb-4 border border-slate-200/50" id="phase-badge">
+          <span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" id="phase-dot"></span>
+          <span id="lbl-phase" class="text-orange-700">¡Prepárate!</span>
+        </div>
+
+        <p id="lbl-phase-desc" class="text-xs font-semibold text-slate-500 mb-6 uppercase tracking-wider">
+          Fase 1: Preparación (1.5 minutos para acondicionar tu entorno)
+        </p>
+
+        <!-- Display digital grande -->
+        <div class="my-2">
+          <span id="lbl-timer" class="font-extrabold text-7xl md:text-8xl tracking-tight text-slate-900 font-mono">
+            28:00
+          </span>
+        </div>
+
+        <!-- Barra de progreso visual -->
+        <div class="w-full bg-slate-200/80 rounded-full h-3 mb-8 overflow-hidden">
+          <div id="progress-bar" class="bg-orange-500 h-full rounded-full transition-all duration-1000 w-0"></div>
+        </div>
+
+        <!-- Botones de Control -->
+        <div class="flex items-center justify-center gap-4">
+          <button id="btn-start" onclick="toggleTimer()" 
+                  class="flex-1 max-w-[200px] flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-blue-500/25 transition-all text-base">
+            <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+            <span>Iniciar</span>
+          </button>
+          
+          <button id="btn-reset" onclick="resetTimer()" 
+                  class="flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-slate-700 font-bold py-3.5 px-5 rounded-xl border border-slate-300 transition-all text-base hover:text-rose-600 active:scale-95 shadow-sm">
+            <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+            <span>Reiniciar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Guía interactiva de fases -->
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs font-bold text-orange-600">1. Preparación</div>
+          <div class="text-xs text-slate-500">28:00 ➔ 26:30 (1.5m)</div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs font-bold text-blue-600">2. Enfoque</div>
+          <div class="text-xs text-slate-500">26:30 ➔ 01:30 (25m)</div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs font-bold text-amber-600">3. Cierre</div>
+          <div class="text-xs text-slate-500">01:30 ➔ 00:00 (1.5m)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 2: ESTADÍSTICAS E HISTORIAL -->
+    <section id="view-stats" class="space-y-6 hidden">
+      
+      <!-- Métricas Principales -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <i data-lucide="clock" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Tiempo Enfoque Total</div>
+            <div id="stat-total-time" class="text-2xl font-extrabold text-slate-900">0 min</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Sesiones Completadas</div>
+            <div id="stat-total-sessions" class="text-2xl font-extrabold text-slate-900">0</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <i data-lucide="folder-kanban" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Proyectos Distintos</div>
+            <div id="stat-total-projects" class="text-2xl font-extrabold text-slate-900">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen por Proyectos -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
+          <i data-lucide="pie-chart" class="w-4 h-4 text-blue-600"></i>
+          Acumulado por Proyecto
+        </h3>
+        <div id="project-summary-list" class="space-y-3">
+          <!-- Se llena dinámicamente -->
+        </div>
+      </div>
+
+      <!-- Tabla de Historial -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h3 class="font-bold text-slate-900 text-lg">Historial de Sesiones</h3>
+            <p class="text-xs text-slate-500">Registros automáticos de sesiones finalizadas</p>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <button onclick="exportDataCSV()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-all">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              Exportar CSV
+            </button>
+            <button onclick="clearHistory()" class="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold rounded-lg transition-all">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              Borrar Historial
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-500 font-semibold text-xs uppercase tracking-wider border-b border-slate-100">
+              <tr>
+                <th class="py-3 px-4">Fecha y Hora</th>
+                <th class="py-3 px-4">Proyecto</th>
+                <th class="py-3 px-4">Objetivo Cumplido</th>
+                <th class="py-3 px-4 text-right">Tiempo Net Enfoque</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body" class="divide-y divide-slate-100 text-slate-700">
+              <!-- Se llena dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+    <p>Pomodoro Web App • Formato 28 Minutos (1.5 Prep - 25 Enfoque - 1.5 Cierre)</p>
+  </footer>
+
+  <!-- LÓGICA JAVASCRIPT -->
+  <script>
+    // Inicialización de Iconos Lucide
+    lucide.createIcons();
+
+    // CONSTANTES DE TIEMPO
+    const TOTAL_SECONDS = 1680; // 28 minutos = 1680s
+    const FOCUS_NET_MINUTES = 25; // Minutos contables de enfoque puro
+
+    // ESTADO DE LA APLICACIÓN
+    let timerInterval = null;
+    let secondsLeft = TOTAL_SECONDS;
+    let isRunning = false;
+    let currentPhase = 'prep'; // 'prep', 'focus', 'close'
+
+    // ELEMENTOS DOM
+    const lblTimer = document.getElementById('lbl-timer');
+    const lblPhase = document.getElementById('lbl-phase');
+    const lblPhaseDesc = document.getElementById('lbl-phase-desc');
+    const phaseDot = document.getElementById('phase-dot');
+    const phaseBadge = document.getElementById('phase-badge');
+    const timerCard = document.getElementById('timer-card');
+    const progressBar = document.getElementById('progress-bar');
+    const btnStart = document.getElementById('btn-start');
+    const inputProyecto = document.getElementById('input-proyecto');
+    const inputObjetivo = document.getElementById('input-objetivo');
+
+    // SINTETIZADOR DE SONIDO (Web Audio API)
+    function playBeep(type = 'phase') {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'phase') {
+          // Sonido de cambio de fase (2 tonos rápidos)
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+          osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.4);
+        } else if (type === 'finish') {
+          // Sonido de finalización completa (Acorde alegre)
+          const freqs = [523.25, 659.25, 783.99, 1046.50]; // C Major
+          freqs.forEach((f, idx) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.frequency.value = f;
+            g.gain.setValueAtTime(0.15, ctx.currentTime + (idx * 0.1));
+            g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (idx * 0.1) + 0.6);
+            o.start(ctx.currentTime + (idx * 0.1));
+            o.stop(ctx.currentTime + (idx * 0.1) + 0.6);
+          });
+        }
+      } catch (e) {
+        console.log("Audio no activado aún por interacción");
+      }
+    }
+
+    // CAMBIO DE PESTAÑAS
+    function switchTab(tab) {
+      const btnTimer = document.getElementById('tab-timer-btn');
+      const btnStats = document.getElementById('tab-stats-btn');
+      const viewTimer = document.getElementById('view-timer');
+      const viewStats = document.getElementById('view-stats');
+
+      if (tab === 'timer') {
+        viewTimer.classList.remove('hidden');
+        viewStats.classList.add('hidden');
+
+        btnTimer.className = "flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-sm bg-white text-blue-600";
+        btnStats.className = "flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all text-slate-600 hover:text-slate-900";
+      } else {
+        viewTimer.classList.add('hidden');
+        viewStats.classList.remove('hidden');
+
+        btnStats.className = "flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all shadow-sm bg-white text-blue-600";
+        btnTimer.className = "flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all text-slate-600 hover:text-slate-900";
+
+        renderStats();
+      }
+    }
+
+    // CONTROL DEL TEMPORIZADOR
+    function toggleTimer() {
+      if (!isRunning) {
+        // Validar inputs obligatorios
+        const proyecto = inputProyecto.value.trim();
+        const objetivo = inputObjetivo.value.trim();
+
+        if (!proyecto || !objetivo) {
+          showToast("Por favor ingresa el Nombre del Proyecto y el Objetivo.", "alert-triangle");
+          return;
+        }
+
+        startTimer();
+      } else {
+        pauseTimer();
+      }
+    }
+
+    function startTimer() {
+      isRunning = true;
+      inputProyecto.disabled = true;
+      inputObjetivo.disabled = true;
+
+      // Cambiar botón a Pausa
+      btnStart.innerHTML = `<i data-lucide="pause" class="w-5 h-5 fill-current"></i><span>Pausar</span>`;
+      btnStart.classList.replace('bg-blue-600', 'bg-amber-600');
+      btnStart.classList.replace('hover:bg-blue-700', 'hover:bg-amber-700');
+      lucide.createIcons();
+
+      timerInterval = setInterval(tick, 1000);
+    }
+
+    function pauseTimer() {
+      isRunning = false;
+      clearInterval(timerInterval);
+
+      btnStart.innerHTML = `<i data-lucide="play" class="w-5 h-5 fill-current"></i><span>Reanudar</span>`;
+      btnStart.classList.replace('bg-amber-600', 'bg-blue-600');
+      btnStart.classList.replace('hover:bg-amber-700', 'hover:bg-blue-700');
+      lucide.createIcons();
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      secondsLeft = TOTAL_SECONDS;
+      currentPhase = 'prep';
+
+      inputProyecto.disabled = false;
+      inputObjetivo.disabled = false;
+
+      btnStart.innerHTML = `<i data-lucide="play" class="w-5 h-5 fill-current"></i><span>Iniciar</span>`;
+      btnStart.classList.remove('bg-amber-600');
+      btnStart.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      lucide.createIcons();
+
+      updateDisplay();
+    }
+
+    function tick() {
+      if (secondsLeft > 0) {
+        secondsLeft--;
+        updateDisplay();
+      } else {
+        finishSession();
+      }
+    }
+
+    // ACTUALIZACIÓN DE FASES E INTERFAZ
+    function updateDisplay() {
+      // Formato MMN:SS
+      const mins = Math.floor(secondsLeft / 60);
+      const secs = secondsLeft % 60;
+      lblTimer.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Cálculo de porcentaje para la barra de progreso
+      const elapsed = TOTAL_SECONDS - secondsLeft;
+      const progressPercent = (elapsed / TOTAL_SECONDS) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+
+      // Determinación de Fase
+      // Fase 1: 28:00 a 26:30 (1680s a 1590s)
+      // Fase 2: 26:30 a 01:30 (1590s a 90s)
+      // Fase 3: 01:30 a 00:00 (90s a 0s)
+      let newPhase = 'prep';
+      if (secondsLeft > 1590) {
+        newPhase = 'prep';
+      } else if (secondsLeft > 90) {
+        newPhase = 'focus';
+      } else {
+        newPhase = 'close';
+      }
+
+      // Detectar cambio de fase para emitir alerta sonora y animación
+      if (newPhase !== currentPhase) {
+        currentPhase = newPhase;
+        playBeep('phase');
+        triggerPhaseFlash();
+      }
+
+      // Estilos según fase
+      if (currentPhase === 'prep') {
+        lblPhase.textContent = "¡Prepárate!";
+        lblPhase.className = "text-orange-700 font-bold";
+        lblPhaseDesc.textContent = "Fase 1: Preparación (1.5 min para organizar tu entorno)";
+        phaseDot.className = "w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse";
+        timerCard.className = "phase-prep border-2 p-8 rounded-3xl text-center shadow-sm transition-all duration-500 relative overflow-hidden";
+        progressBar.className = "bg-orange-500 h-full rounded-full transition-all duration-1000";
+      } else if (currentPhase === 'focus') {
+        lblPhase.textContent = "¡A enfocarme!";
+        lblPhase.className = "text-blue-700 font-bold";
+        lblPhaseDesc.textContent = "Fase 2: Enfoque Profesional (25 min de trabajo ininterrumpido)";
+        phaseDot.className = "w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse";
+        timerCard.className = "phase-focus border-2 p-8 rounded-3xl text-center shadow-sm transition-all duration-500 relative overflow-hidden";
+        progressBar.className = "bg-blue-600 h-full rounded-full transition-all duration-1000";
+      } else {
+        lblPhase.textContent = "Cerrando proyecto";
+        lblPhase.className = "text-amber-800 font-bold";
+        lblPhaseDesc.textContent = "Fase 3: Cierre (1.5 min para anotar avances y guardar)";
+        phaseDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+        timerCard.className = "phase-close border-2 p-8 rounded-3xl text-center shadow-sm transition-all duration-500 relative overflow-hidden";
+        progressBar.className = "bg-amber-500 h-full rounded-full transition-all duration-1000";
+      }
+    }
+
+    function triggerPhaseFlash() {
+      timerCard.classList.add('flash-phase');
+      setTimeout(() => timerCard.classList.remove('flash-phase'), 1800);
+    }
+
+    // FINALIZACIÓN Y ALMACENAMIENTO LOCAL
+    function finishSession() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      playBeep('finish');
+
+      const proyecto = inputProyecto.value.trim();
+      const objetivo = inputObjetivo.value.trim();
+
+      saveSession(proyecto, objetivo);
+      
+      showToast("¡Felicidades! Sesión de 28 minutos completada con éxito.", "check-circle");
+      resetTimer();
+    }
+
+    function saveSession(proyecto, objetivo) {
+      const history = JSON.parse(localStorage.getItem('pomodoro_history') || '[]');
+      
+      const newSession = {
+        id: Date.now(),
+        fecha: new Date().toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }),
+        proyecto: proyecto,
+        objetivo: objetivo,
+        tiempoEnfoque: FOCUS_NET_MINUTES
+      };
+
+      history.unshift(newSession);
+      localStorage.setItem('pomodoro_history', JSON.stringify(history));
+    }
+
+    // RENDEREAR ESTADÍSTICAS E HISTORIAL
+    function renderStats() {
+      const history = JSON.parse(localStorage.getItem('pomodoro_history') || '[]');
+
+      // 1. Cálculos generales
+      const totalSessions = history.length;
+      const totalTime = totalSessions * FOCUS_NET_MINUTES;
+      
+      // Proyectos únicos
+      const projectsMap = {};
+      history.forEach(item => {
+        projectsMap[item.proyecto] = (projectsMap[item.proyecto] || 0) + item.tiempoEnfoque;
+      });
+      const uniqueProjectsCount = Object.keys(projectsMap).length;
+
+      // Actualizar Cards
+      document.getElementById('stat-total-time').textContent = `${totalTime} min`;
+      document.getElementById('stat-total-sessions').textContent = totalSessions;
+      document.getElementById('stat-total-projects').textContent = uniqueProjectsCount;
+
+      // 2. Resumen acumulado por proyecto
+      const projectSummaryList = document.getElementById('project-summary-list');
+      projectSummaryList.innerHTML = '';
+
+      if (uniqueProjectsCount === 0) {
+        projectSummaryList.innerHTML = `<p class="text-xs text-slate-400 italic">Sin datos registrados aún.</p>`;
+      } else {
+        Object.entries(projectsMap).forEach(([projName, time]) => {
+          const percent = totalTime > 0 ? Math.round((time / totalTime) * 100) : 0;
+          const itemHTML = `
+            <div>
+              <div class="flex justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-800">${escapeHTML(projName)}</span>
+                <span class="text-slate-500">${time} min (${percent}%)</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2">
+                <div class="bg-blue-600 h-2 rounded-full" style="width: ${percent}%"></div>
+              </div>
+            </div>
+          `;
+          projectSummaryList.insertAdjacentHTML('beforeend', itemHTML);
+        });
+      }
+
+      // 3. Tabla de historial
+      const tableBody = document.getElementById('history-table-body');
+      tableBody.innerHTML = '';
+
+      if (history.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="4" class="py-8 text-center text-slate-400 text-xs">
+              No hay sesiones registradas. ¡Completa tu primer Pomodoro de 28m!
+            </td>
+          </tr>
+        `;
+      } else {
+        history.forEach(session => {
+          const rowHTML = `
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="py-3 px-4 font-mono text-xs text-slate-500">${session.fecha}</td>
+              <td class="py-3 px-4 font-semibold text-slate-800">${escapeHTML(session.proyecto)}</td>
+              <td class="py-3 px-4 text-slate-600 text-xs">${escapeHTML(session.objetivo)}</td>
+              <td class="py-3 px-4 text-right font-bold text-blue-600">+${session.tiempoEnfoque} min</td>
+            </tr>
+          `;
+          tableBody.insertAdjacentHTML('beforeend', rowHTML);
+        });
+      }
+    }
+
+    // ACCIONES DE GESTIÓN DE DATOS
+    function clearHistory() {
+      if (confirm("¿Estás seguro de que deseas borrar todo el historial registrado?")) {
+        localStorage.removeItem('pomodoro_history');
+        renderStats();
+        showToast("Historial borrado correctamente", "trash-2");
+      }
+    }
+
+    function exportDataCSV() {
+      const history = JSON.parse(localStorage.getItem('pomodoro_history') || '[]');
+      if (history.length === 0) {
+        showToast("No hay datos para exportar", "alert-circle");
+        return;
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,Fecha,Proyecto,Objetivo,Tiempo_Enfoque_Min\n";
+      history.forEach(row => {
+        csvContent += `"${row.fecha}","${row.proyecto}","${row.objetivo}",${row.tiempoEnfoque}\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `pomodoro_historial_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast("Archivo CSV descargado", "download");
+    }
+
+    // UTILIDADES
+    function showToast(message, iconName = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.textContent = message;
+      toastIcon.setAttribute('data-lucide', iconName);
+      lucide.createIcons();
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+  </script>
+</body>
+</html>
+```
+
+---
+
+### ¿Cómo desplegarlo gratis en GitHub Pages?
+
+Para compartir la web públicamente mediante un enlace sin pagar servidores ni configurar código complejo:
+
+1. **Crea un archivo**: Guarda el código de arriba en un archivo con el nombre `index.html`.
+2. **Prueba local**: Puedes abrir `index.html` haciendo doble clic desde tu computadora y funcionará en cualquier navegador.
+3. **Publica en GitHub Pages**:
+   - Inicia sesión en [GitHub](https://github.com/) y crea un **Nuevo Repositorio** (puedes llamarlo `pomodoro-28m`).
+   - Sube (arrastra) el archivo `index.html` al repositorio.
+   - Entra en la sección **Settings** (Configuración) de tu repositorio.
+   - En el menú lateral izquierdo, haz clic en **Pages**.
+   - En la sección *Build and deployment / Branch*, selecciona la rama `main` (o `master`) y la carpeta `/root`, luego presiona **Save**.
+   - En un par de minutos, GitHub te dará una URL pública tipo `https://tu-usuario.github.io/pomodoro-28m/` que podrás compartir con cualquier persona.
